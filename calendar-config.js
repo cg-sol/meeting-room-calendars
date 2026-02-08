@@ -1,6 +1,3 @@
-// Configuration file for meeting room calendars
-// Add your 18 meeting room calendars here
-
 const CALENDARS = [
     {
         name: "Room 1",
@@ -93,13 +90,3 @@ const CALENDARS = [
         color: "#0063b1"
     }
 ];
-
-// IMPORTANT: To get the ICS URL for each calendar:
-// 1. Take your HTML calendar link (the one ending in .html)
-// 2. Replace ".html" at the end with ".ics"
-// 
-// Example:
-// HTML: https://outlook.office365.com/calendar/published/.../calendar.html
-// ICS:  https://outlook.office365.com/calendar/published/.../calendar.ics
-//
-// The ICS format is what allows us to fetch and parse the calendar data.
