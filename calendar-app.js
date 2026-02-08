@@ -225,7 +225,7 @@ async function fetchCalendarEvents(url, color, calendarName) {
         console.log(`Attempt ${proxyIndex + 1}/${CORS_PROXIES.length}: Fetching ${calendarName} via ${proxy.substring(0, 30)}...`);
         
         try {
-            const events = await fetchWithRetry(proxyUrl, 2, 10000); // 2 retries, 10s timeout
+            const events = await fetchWithRetry(proxyUrl, 2, 20000); // 2 retries, 10s timeout
             const parsedEvents = parseICS(events, color);
             
             // Cache successful result
