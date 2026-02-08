@@ -55,7 +55,7 @@ const CALENDARS = [
         color: "#6b69d6"
     },
     {
-        name: "Room 12,
+        name: "Room 12",
         url: "http://outlook.office365.com/owa/calendar/40350fe13e244f609ded65b4148ded8c@solect.com/53bd571d74f340dbaa0f761c8b665f7812053080795729831175/calendar.ics",
         color: "#00cc6a"
     },
