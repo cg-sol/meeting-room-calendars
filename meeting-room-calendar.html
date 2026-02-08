@@ -280,4 +280,212 @@
     <script src="calendar-config.js"></script>
     <script src="calendar-app.js"></script>
 </body>
+</html>            border: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #006bc7;
+        }
+
+        .view-mode-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            background: #0078d4;
+            color: white;
+        }
+
+        .navigation {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            min-width: 80px;
+        }
+
+        .current-date {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .multi-select-area {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .multi-select-area.active {
+            display: flex;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .calendar-container {
+            margin-top: 20px;
+        }
+
+        .multi-calendar-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px;
+        }
+
+        .multi-calendar-grid.active {
+            display: grid;
+        }
+        
+        /* Support 1-4 calendars side by side */
+        @media (min-width: 1400px) {
+            .multi-calendar-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+        }
+
+        .calendar-wrapper {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+
+        .calendar-wrapper h3 {
+            margin-bottom: 10px;
+            color: #0078d4;
+            font-size: 16px;
+        }
+
+        #single-calendar {
+            min-height: 600px;
+        }
+
+        .fc-event {
+            cursor: pointer;
+        }
+        
+        /* Fix for initial rendering issues */
+        .fc {
+            width: 100%;
+        }
+        
+        .fc-view-harness {
+            height: 100% !important;
+        }
+        
+        /* Ensure day view events are visible */
+        .fc-timegrid-event {
+            opacity: 1 !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Meeting Room Calendar Viewer</h1>
+        
+        <div class="controls">
+            <div class="view-mode-tabs">
+                <button class="tab-button active" onclick="switchMode('single')">Single Calendar</button>
+                <button class="tab-button" onclick="switchMode('multi')">Multiple Calendars</button>
+            </div>
+
+            <div class="control-group" id="single-select-area">
+                <label for="calendar-select">Select Meeting Room:</label>
+                <select id="calendar-select" onchange="loadSingleCalendar()">
+                    <option value="">Choose a room...</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="view-select-area">
+                <label for="view-type">View Type:</label>
+                <select id="view-type" onchange="changeView()">
+                    <option value="dayGridMonth">Month</option>
+                    <option value="timeGridWeek">Week</option>
+                    <option value="timeGridDay">Day</option>
+                </select>
+            </div>
+
+            <div class="navigation">
+                <button class="nav-button" onclick="navigatePrev()">← Previous</button>
+                <div class="current-date" id="current-date"></div>
+                <button class="nav-button" onclick="navigateNext()">Next →</button>
+                <button class="nav-button" onclick="navigateToday()">Today</button>
+            </div>
+        </div>
+
+        <div class="multi-select-area" id="multi-select-area">
+            <label>Select Multiple Meeting Rooms:</label>
+            <div class="checkbox-grid" id="checkbox-grid"></div>
+            <button onclick="loadMultipleCalendars()">Load Selected Calendars</button>
+        </div>
+
+        <div class="calendar-container">
+            <div id="loading" class="loading" style="display: none;">Loading calendars...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="single-calendar"></div>
+            <div id="multi-calendar-grid" class="multi-calendar-grid"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.11/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.11/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.11/index.global.min.js"></script>
+    <script src="https://unpkg.com/ical.js@1.4.0/build/ical.min.js"></script>
+    <script src="calendar-config.js"></script>
+    <script src="calendar-app.js"></script>
+</body>
 </html>
