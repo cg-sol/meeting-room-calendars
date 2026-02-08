@@ -1,19 +1,17 @@
-// Main application logic for meeting room calendar viewer - UPDATED VERSION
+
 
 let currentMode = 'single';
 let singleCalendar = null;
 let multiCalendars = {};
 let currentDate = new Date();
-let eventCache = {}; // Cache events to avoid refetching
 
-// Initialize the application
 function init() {
+    console.log('Initializing calendar viewer...');
     populateCalendarSelect();
     populateCheckboxGrid();
     updateCurrentDateDisplay();
 }
 
-// Populate the dropdown for single calendar selection
 function populateCalendarSelect() {
     const select = document.getElementById('calendar-select');
     CALENDARS.forEach((cal, index) => {
@@ -22,9 +20,9 @@ function populateCalendarSelect() {
         option.textContent = cal.name;
         select.appendChild(option);
     });
+    console.log('Populated', CALENDARS.length, 'calendars in dropdown');
 }
 
-// Populate checkboxes for multi-calendar selection
 function populateCheckboxGrid() {
     const grid = document.getElementById('checkbox-grid');
     CALENDARS.forEach((cal, index) => {
@@ -47,17 +45,14 @@ function populateCheckboxGrid() {
     });
 }
 
-// Switch between single and multi-calendar modes
 function switchMode(mode) {
     currentMode = mode;
     
-    // Update tab buttons
     document.querySelectorAll('.tab-button').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.classList.add('active');
     
-    // Show/hide appropriate controls
     if (mode === 'single') {
         document.getElementById('single-select-area').style.display = 'flex';
         document.getElementById('view-select-area').style.display = 'flex';
@@ -65,7 +60,6 @@ function switchMode(mode) {
         document.getElementById('single-calendar').style.display = 'block';
         document.getElementById('multi-calendar-grid').classList.remove('active');
         
-        // Reset multi-calendar view
         const viewSelect = document.getElementById('view-type');
         viewSelect.innerHTML = `
             <option value="dayGridMonth">Month</option>
@@ -79,7 +73,6 @@ function switchMode(mode) {
         document.getElementById('single-calendar').style.display = 'none';
         document.getElementById('multi-calendar-grid').classList.add('active');
         
-        // Remove month view option for multi-calendar
         const viewSelect = document.getElementById('view-type');
         viewSelect.innerHTML = `
             <option value="timeGridWeek">Week</option>
@@ -89,24 +82,23 @@ function switchMode(mode) {
     }
 }
 
-// Load single calendar
 async function loadSingleCalendar() {
     const selectIndex = document.getElementById('calendar-select').value;
     if (!selectIndex) return;
     
     const calendar = CALENDARS[selectIndex];
+    console.log('Loading calendar:', calendar.name, 'URL:', calendar.url);
     showLoading(true);
     hideError();
     
     try {
-        const events = await fetchCalendarEvents(calendar.url, calendar.color, selectIndex);
+        const events = await fetchCalendarEvents(calendar.url, calendar.color);
+        console.log('Loaded', events.length, 'events for', calendar.name);
         
-        // Destroy existing calendar if it exists
         if (singleCalendar) {
             singleCalendar.destroy();
         }
         
-        // Create new calendar
         const calendarEl = document.getElementById('single-calendar');
         const viewType = document.getElementById('view-type').value;
         
@@ -116,11 +108,6 @@ async function loadSingleCalendar() {
             headerToolbar: false,
             height: 'auto',
             events: events,
-            slotMinTime: '06:00:00',  // Show calendar from 6 AM
-            slotMaxTime: '22:00:00',  // Show calendar until 10 PM
-            allDaySlot: true,
-            nowIndicator: true,
-            scrollTime: '08:00:00',   // Scroll to 8 AM by default
             eventClick: function(info) {
                 alert('Event: ' + info.event.title + '\n' +
                       'Start: ' + info.event.start.toLocaleString() + '\n' +
@@ -129,32 +116,18 @@ async function loadSingleCalendar() {
             datesSet: function(dateInfo) {
                 currentDate = dateInfo.view.currentStart;
                 updateCurrentDateDisplay();
-            },
-            eventDidMount: function(info) {
-                // Ensure events are visible in day view
-                if (info.view.type === 'timeGridDay') {
-                    info.el.style.opacity = '1';
-                }
             }
         });
         
         singleCalendar.render();
-        
-        // Force a resize after render to fix display issues
-        setTimeout(() => {
-            if (singleCalendar) {
-                singleCalendar.updateSize();
-            }
-        }, 100);
-        
         showLoading(false);
     } catch (error) {
-        showError('Failed to load calendar: ' + error.message + ' - Please try again');
+        console.error('ERROR loading calendar:', error);
+        showError('Failed to load calendar: ' + error.message);
         showLoading(false);
     }
 }
 
-// Load multiple calendars side by side
 async function loadMultipleCalendars() {
     const selectedIndices = Array.from(document.querySelectorAll('#checkbox-grid input:checked'))
         .map(cb => parseInt(cb.value));
@@ -164,16 +137,10 @@ async function loadMultipleCalendars() {
         return;
     }
     
-    if (selectedIndices.length > 4) {
-        if (!confirm('You selected ' + selectedIndices.length + ' calendars. For best viewing, we recommend 4 or fewer. Continue anyway?')) {
-            return;
-        }
-    }
-    
+    console.log('Loading', selectedIndices.length, 'calendars');
     showLoading(true);
     hideError();
     
-    // Clear existing calendars
     const gridEl = document.getElementById('multi-calendar-grid');
     gridEl.innerHTML = '';
     multiCalendars = {};
@@ -183,9 +150,9 @@ async function loadMultipleCalendars() {
         
         for (const index of selectedIndices) {
             const calendar = CALENDARS[index];
-            const events = await fetchCalendarEvents(calendar.url, calendar.color, index);
+            console.log('Loading', calendar.name);
+            const events = await fetchCalendarEvents(calendar.url, calendar.color);
             
-            // Create wrapper div
             const wrapper = document.createElement('div');
             wrapper.className = 'calendar-wrapper';
             
@@ -199,18 +166,12 @@ async function loadMultipleCalendars() {
             
             gridEl.appendChild(wrapper);
             
-            // Create calendar instance
             const cal = new FullCalendar.Calendar(calDiv, {
                 initialView: viewType,
                 initialDate: currentDate,
                 headerToolbar: false,
                 height: 'auto',
                 events: events,
-                slotMinTime: '06:00:00',
-                slotMaxTime: '22:00:00',
-                allDaySlot: true,
-                nowIndicator: true,
-                scrollTime: '08:00:00',
                 eventClick: function(info) {
                     alert('Event: ' + info.event.title + '\n' +
                           'Room: ' + calendar.name + '\n' +
@@ -223,124 +184,117 @@ async function loadMultipleCalendars() {
             multiCalendars[index] = cal;
         }
         
-        // Force resize after all calendars are rendered
-        setTimeout(() => {
-            Object.values(multiCalendars).forEach(cal => {
-                cal.updateSize();
-            });
-        }, 200);
-        
         showLoading(false);
         updateCurrentDateDisplay();
     } catch (error) {
-        showError('Failed to load calendars: ' + error.message + ' - Please try again');
+        console.error('ERROR loading calendars:', error);
+        showError('Failed to load calendars: ' + error.message);
         showLoading(false);
     }
 }
 
-// Fetch and parse calendar events from ICS URL with retry logic
-async function fetchCalendarEvents(url, color, cacheKey) {
-    // Check cache first
-    if (eventCache[cacheKey]) {
-        console.log('Using cached events for calendar ' + cacheKey);
-        return eventCache[cacheKey];
-    }
-    
-    const maxRetries = 3;
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            console.log(`Fetching calendar ${cacheKey}, attempt ${attempt}/${maxRetries}`);
-            
-            // Use CORS proxy for fetching ICS files
-            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-            const response = await fetch(proxyUrl, {
-                signal: AbortSignal.timeout(15000) // 15 second timeout
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const icsData = await response.text();
-            
-            if (!icsData || icsData.trim().length === 0) {
-                throw new Error('Empty calendar data received');
-            }
-            
-            const events = parseICS(icsData, color);
-            
-            // Cache the events
-            eventCache[cacheKey] = events;
-            
-            return events;
-        } catch (error) {
-            lastError = error;
-            console.error(`Attempt ${attempt} failed:`, error);
-            
-            if (attempt < maxRetries) {
-                // Wait before retrying (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            }
+async function fetchCalendarEvents(url, color) {
+    try {
+        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+        
+        console.log('Fetching from proxy:', proxyUrl);
+        
+        const response = await fetch(proxyUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        const icsData = await response.text();
+        
+        console.log('Received', icsData.length, 'characters of data');
+        console.log('First 200 chars:', icsData.substring(0, 200));
+        
+        if (!icsData || icsData.trim().length === 0) {
+            throw new Error('Empty response from server');
+        }
+        
+        return parseICS(icsData, color);
+    } catch (error) {
+        console.error('Fetch error:', error);
+        throw error;
     }
-    
-    throw new Error(`Failed after ${maxRetries} attempts: ${lastError.message}`);
 }
 
-// Parse ICS data into FullCalendar events
 function parseICS(icsData, color) {
     const events = [];
     
     try {
+        // Validate ICS format
+        if (!icsData.includes('BEGIN:VCALENDAR')) {
+            console.error('NOT ICS FORMAT!');
+            console.error('Data received:', icsData.substring(0, 500));
+            throw new Error('Invalid ICS format - not a calendar file');
+        }
+        
+        console.log('Parsing ICS data...');
         const jcalData = ICAL.parse(icsData);
         const comp = new ICAL.Component(jcalData);
         const vevents = comp.getAllSubcomponents('vevent');
         
-        vevents.forEach(vevent => {
-            const event = new ICAL.Event(vevent);
-            
-            const fcEvent = {
-                title: event.summary,
-                start: event.startDate.toJSDate(),
-                end: event.endDate.toJSDate(),
-                backgroundColor: color,
-                borderColor: color,
-                description: event.description || '',
-                location: event.location || '',
-                allDay: event.startDate.isDate // Properly handle all-day events
-            };
-            
-            // Handle recurring events
-            if (event.isRecurring()) {
-                const expand = event.iterator();
-                let next;
-                let count = 0;
-                const maxOccurrences = 100;
+        console.log('Found', vevents.length, 'events in calendar');
+        
+        vevents.forEach((vevent, idx) => {
+            try {
+                const event = new ICAL.Event(vevent);
                 
-                while ((next = expand.next()) && count < maxOccurrences) {
-                    const occurrence = event.getOccurrenceDetails(next);
-                    events.push({
-                        ...fcEvent,
-                        start: occurrence.startDate.toJSDate(),
-                        end: occurrence.endDate.toJSDate()
-                    });
-                    count++;
+                const fcEvent = {
+                    title: event.summary || 'Untitled Event',
+                    start: event.startDate.toJSDate(),
+                    end: event.endDate.toJSDate(),
+                    backgroundColor: color,
+                    borderColor: color,
+                    description: event.description || '',
+                    location: event.location || ''
+                };
+                
+                // Handle recurring events
+                if (event.isRecurring()) {
+                    try {
+                        const expand = event.iterator();
+                        let next;
+                        let count = 0;
+                        const maxOccurrences = 100;
+                        
+                        while ((next = expand.next()) && count < maxOccurrences) {
+                            const occurrence = event.getOccurrenceDetails(next);
+                            events.push({
+                                ...fcEvent,
+                                start: occurrence.startDate.toJSDate(),
+                                end: occurrence.endDate.toJSDate()
+                            });
+                            count++;
+                        }
+                        console.log('Expanded recurring event into', count, 'occurrences');
+                    } catch (recurError) {
+                        console.warn('Error expanding recurring event:', recurError);
+                        events.push(fcEvent); // Add single instance as fallback
+                    }
+                } else {
+                    events.push(fcEvent);
                 }
-            } else {
-                events.push(fcEvent);
+            } catch (eventError) {
+                console.warn('Error parsing event', idx, ':', eventError);
+                // Skip this event and continue
             }
         });
+        
+        console.log('Successfully parsed', events.length, 'total events');
+        
     } catch (error) {
-        console.error('Error parsing ICS data:', error);
-        throw new Error('Failed to parse calendar data - Invalid ICS format');
+        console.error('PARSE ERROR:', error);
+        console.error('Failed ICS data (first 500 chars):', icsData.substring(0, 500));
+        throw new Error('Failed to parse calendar data - ' + error.message);
     }
     
     return events;
 }
 
-// Navigation functions
 function navigatePrev() {
     if (currentMode === 'single' && singleCalendar) {
         singleCalendar.prev();
@@ -369,32 +323,16 @@ function navigateToday() {
     }
 }
 
-// Change calendar view type
 function changeView() {
     const viewType = document.getElementById('view-type').value;
     
     if (currentMode === 'single' && singleCalendar) {
         singleCalendar.changeView(viewType);
-        // Force resize after view change
-        setTimeout(() => {
-            if (singleCalendar) {
-                singleCalendar.updateSize();
-            }
-        }, 100);
     } else if (currentMode === 'multi') {
-        Object.values(multiCalendars).forEach(cal => {
-            cal.changeView(viewType);
-        });
-        // Force resize after view change
-        setTimeout(() => {
-            Object.values(multiCalendars).forEach(cal => {
-                cal.updateSize();
-            });
-        }, 100);
+        Object.values(multiCalendars).forEach(cal => cal.changeView(viewType));
     }
 }
 
-// Update current date display
 function updateCurrentDateDisplay() {
     const displayEl = document.getElementById('current-date');
     const viewType = document.getElementById('view-type').value;
@@ -414,7 +352,6 @@ function updateCurrentDateDisplay() {
     displayEl.textContent = dateStr;
 }
 
-// UI helper functions
 function showLoading(show) {
     document.getElementById('loading').style.display = show ? 'block' : 'none';
 }
@@ -429,25 +366,6 @@ function hideError() {
     document.getElementById('error').style.display = 'none';
 }
 
-// Clear event cache (useful if calendars are updated)
-function clearCache() {
-    eventCache = {};
-    console.log('Event cache cleared');
-}
-
-// Initialize when page loads
 document.addEventListener('DOMContentLoaded', init);
 
-// Handle window resize to update calendar sizes
-let resizeTimer;
-window.addEventListener('resize', function() {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function() {
-        if (singleCalendar) {
-            singleCalendar.updateSize();
-        }
-        Object.values(multiCalendars).forEach(cal => {
-            cal.updateSize();
-        });
-    }, 250);
-});
+console.log('calendar-app.js loaded successfully');
