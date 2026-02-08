@@ -157,12 +157,19 @@
 
         .multi-calendar-grid {
             display: none;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px;
         }
 
         .multi-calendar-grid.active {
             display: grid;
+        }
+        
+        /* Support 1-4 calendars side by side */
+        @media (min-width: 1400px) {
+            .multi-calendar-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
         }
 
         .calendar-wrapper {
@@ -184,6 +191,20 @@
 
         .fc-event {
             cursor: pointer;
+        }
+        
+        /* Fix for initial rendering issues */
+        .fc {
+            width: 100%;
+        }
+        
+        .fc-view-harness {
+            height: 100% !important;
+        }
+        
+        /* Ensure day view events are visible */
+        .fc-timegrid-event {
+            opacity: 1 !important;
         }
 
         .loading {
