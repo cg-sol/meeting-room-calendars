@@ -209,9 +209,46 @@
 
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 60px 40px;
+            background: #e3f2fd;
+            border: 3px solid #2196F3;
+            border-radius: 12px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .loading-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976D2;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .loading-subtext {
+            font-size: 16px;
             color: #666;
             font-style: italic;
+            position: relative;
+            z-index: 1;
         }
 
         .error {
@@ -264,7 +301,10 @@
         </div>
 
         <div class="calendar-container">
-            <div id="loading" class="loading" style="display: none;">Loading calendars...</div>
+            <div id="loading" class="loading" style="display: none;">
+                <div class="loading-text">Loading Calendars...</div>
+                <div class="loading-subtext">This may take up to 30 seconds</div>
+            </div>
             <div id="error" class="error" style="display: none;"></div>
             <div id="single-calendar"></div>
             <div id="multi-calendar-grid" class="multi-calendar-grid"></div>
