@@ -5,6 +5,17 @@ let singleCalendar = null;
 let multiCalendars = {};
 let currentDate = new Date();
 
+// Event cache to reduce fetches
+const eventCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Multiple CORS proxies for fallback
+const CORS_PROXIES = [
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest='
+];
+
 function init() {
     console.log('Initializing calendar viewer...');
     populateCalendarSelect();
@@ -92,7 +103,7 @@ async function loadSingleCalendar() {
     hideError();
     
     try {
-        const events = await fetchCalendarEvents(calendar.url, calendar.color);
+        const events = await fetchCalendarEvents(calendar.url, calendar.color, calendar.name);
         console.log('Loaded', events.length, 'events for', calendar.name);
         
         if (singleCalendar) {
@@ -137,6 +148,10 @@ async function loadMultipleCalendars() {
         return;
     }
     
+    if (selectedIndices.length > 4) {
+        alert('For best viewing, please select 4 or fewer calendars. You selected ' + selectedIndices.length);
+    }
+    
     console.log('Loading', selectedIndices.length, 'calendars');
     showLoading(true);
     hideError();
@@ -151,7 +166,7 @@ async function loadMultipleCalendars() {
         for (const index of selectedIndices) {
             const calendar = CALENDARS[index];
             console.log('Loading', calendar.name);
-            const events = await fetchCalendarEvents(calendar.url, calendar.color);
+            const events = await fetchCalendarEvents(calendar.url, calendar.color, calendar.name);
             
             const wrapper = document.createElement('div');
             wrapper.className = 'calendar-wrapper';
@@ -193,31 +208,88 @@ async function loadMultipleCalendars() {
     }
 }
 
-async function fetchCalendarEvents(url, color) {
-    try {
-        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+async function fetchCalendarEvents(url, color, calendarName) {
+    // Check cache first
+    const cacheKey = url;
+    const cached = eventCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+        console.log('Using cached events for', calendarName);
+        return cached.events;
+    }
+    
+    // Try each CORS proxy in sequence
+    for (let proxyIndex = 0; proxyIndex < CORS_PROXIES.length; proxyIndex++) {
+        const proxy = CORS_PROXIES[proxyIndex];
+        const proxyUrl = proxy + encodeURIComponent(url);
         
-        console.log('Fetching from proxy:', proxyUrl);
+        console.log(`Attempt ${proxyIndex + 1}/${CORS_PROXIES.length}: Fetching ${calendarName} via ${proxy.substring(0, 30)}...`);
         
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        try {
+            const events = await fetchWithRetry(proxyUrl, 2, 10000); // 2 retries, 10s timeout
+            const parsedEvents = parseICS(events, color);
+            
+            // Cache successful result
+            eventCache.set(cacheKey, {
+                events: parsedEvents,
+                timestamp: Date.now()
+            });
+            
+            console.log(`✅ Success with proxy ${proxyIndex + 1}: ${parsedEvents.length} events`);
+            return parsedEvents;
+            
+        } catch (error) {
+            console.warn(`Proxy ${proxyIndex + 1} failed for ${calendarName}:`, error.message);
+            
+            // If this was the last proxy, throw error
+            if (proxyIndex === CORS_PROXIES.length - 1) {
+                throw new Error(`Failed after trying ${CORS_PROXIES.length} proxies: ${error.message}`);
+            }
+            // Otherwise, continue to next proxy
         }
-        
-        const icsData = await response.text();
-        
-        console.log('Received', icsData.length, 'characters of data');
-        console.log('First 200 chars:', icsData.substring(0, 200));
-        
-        if (!icsData || icsData.trim().length === 0) {
-            throw new Error('Empty response from server');
+    }
+}
+
+async function fetchWithRetry(url, maxRetries, timeout) {
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            const response = await fetch(url, { 
+                signal: controller.signal,
+                cache: 'no-cache'
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const icsData = await response.text();
+            
+            if (!icsData || icsData.trim().length === 0) {
+                throw new Error('Empty response from server');
+            }
+            
+            console.log('Received', icsData.length, 'characters of data');
+            return icsData;
+            
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.warn(`Attempt ${attempt} timed out after ${timeout}ms`);
+            } else {
+                console.warn(`Attempt ${attempt} failed:`, error.message);
+            }
+            
+            if (attempt <= maxRetries) {
+                const delay = attempt * 1000; // Progressive delay: 1s, 2s, 3s
+                console.log(`Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                throw error;
+            }
         }
-        
-        return parseICS(icsData, color);
-    } catch (error) {
-        console.error('Fetch error:', error);
-        throw error;
     }
 }
 
@@ -273,14 +345,13 @@ function parseICS(icsData, color) {
                         console.log('Expanded recurring event into', count, 'occurrences');
                     } catch (recurError) {
                         console.warn('Error expanding recurring event:', recurError);
-                        events.push(fcEvent); // Add single instance as fallback
+                        events.push(fcEvent);
                     }
                 } else {
                     events.push(fcEvent);
                 }
             } catch (eventError) {
                 console.warn('Error parsing event', idx, ':', eventError);
-                // Skip this event and continue
             }
         });
         
@@ -368,4 +439,4 @@ function hideError() {
 
 document.addEventListener('DOMContentLoaded', init);
 
-console.log('calendar-app.js loaded successfully');
+console.log('calendar-app.js loaded successfully (ENHANCED VERSION with fallback proxies)');
