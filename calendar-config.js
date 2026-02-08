@@ -2,7 +2,7 @@
 const CALENDARS = [
     {
         name: "Room 1",
-        url: "https://outlook.office365.com/calendar/published/d1223f3c7c3d478ea3edf6435b0f48b5@solect.com/965d89338a714c34802d6a7b45bbff451948969580000036295/calendar.ics",
+        url: "https://outlook.office365.com/ow/calendar/d1223f3c7c3d478ea3edf6435b0f48b5@solect.com/965d89338a714c34802d6a7b45bbff451948969580000036295/calendar.ics",
         color: "#0078d4"
     },
     {
