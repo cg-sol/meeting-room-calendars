@@ -1,4 +1,5 @@
-
+// calendar-app.js - ENHANCED VERSION with multiple CORS proxy fallbacks
+// Handles intermittent "Failed to fetch" errors
 
 let currentMode = 'single';
 let singleCalendar = null;
@@ -113,12 +114,19 @@ async function loadSingleCalendar() {
         const calendarEl = document.getElementById('single-calendar');
         const viewType = document.getElementById('view-type').value;
         
+        // Reset to today's date when loading new calendar
+        currentDate = new Date();
+        
         singleCalendar = new FullCalendar.Calendar(calendarEl, {
             initialView: viewType,
             initialDate: currentDate,
             headerToolbar: false,
             height: 'auto',
             events: events,
+            slotMinTime: '06:00:00',  // Start at 6 AM
+            slotMaxTime: '20:00:00',  // End at 8 PM
+            scrollTime: '08:00:00',   // Scroll to 8 AM
+            nowIndicator: true,
             eventClick: function(info) {
                 alert('Event: ' + info.event.title + '\n' +
                       'Start: ' + info.event.start.toLocaleString() + '\n' +
@@ -148,8 +156,10 @@ async function loadMultipleCalendars() {
         return;
     }
     
+    // ENFORCE maximum of 4 calendars
     if (selectedIndices.length > 4) {
-        alert('For best viewing, please select 4 or fewer calendars. You selected ' + selectedIndices.length);
+        alert('Maximum 4 calendars allowed. Please select 4 or fewer calendars.');
+        return;
     }
     
     console.log('Loading', selectedIndices.length, 'calendars');
@@ -159,6 +169,9 @@ async function loadMultipleCalendars() {
     const gridEl = document.getElementById('multi-calendar-grid');
     gridEl.innerHTML = '';
     multiCalendars = {};
+    
+    // Reset to today's date when loading new calendars
+    currentDate = new Date();
     
     try {
         const viewType = document.getElementById('view-type').value;
@@ -187,6 +200,10 @@ async function loadMultipleCalendars() {
                 headerToolbar: false,
                 height: 'auto',
                 events: events,
+                slotMinTime: '06:00:00',  // Start at 6 AM
+                slotMaxTime: '20:00:00',  // End at 8 PM
+                scrollTime: '08:00:00',   // Scroll to 8 AM
+                nowIndicator: true,
                 eventClick: function(info) {
                     alert('Event: ' + info.event.title + '\n' +
                           'Room: ' + calendar.name + '\n' +
@@ -196,11 +213,23 @@ async function loadMultipleCalendars() {
             });
             
             cal.render();
+            
+            // FIX: Force resize after render to fix first calendar formatting
+            setTimeout(() => {
+                cal.updateSize();
+            }, 100);
+            
             multiCalendars[index] = cal;
         }
         
         showLoading(false);
         updateCurrentDateDisplay();
+        
+        // FIX: Additional resize after all calendars loaded
+        setTimeout(() => {
+            Object.values(multiCalendars).forEach(cal => cal.updateSize());
+        }, 300);
+        
     } catch (error) {
         console.error('ERROR loading calendars:', error);
         showError('Failed to load calendars: ' + error.message);
@@ -225,7 +254,7 @@ async function fetchCalendarEvents(url, color, calendarName) {
         console.log(`Attempt ${proxyIndex + 1}/${CORS_PROXIES.length}: Fetching ${calendarName} via ${proxy.substring(0, 30)}...`);
         
         try {
-            const events = await fetchWithRetry(proxyUrl, 2, 20000); // 2 retries, 10s timeout
+            const events = await fetchWithRetry(proxyUrl, 2, 30000); // 2 retries, 30s timeout
             const parsedEvents = parseICS(events, color);
             
             // Cache successful result
