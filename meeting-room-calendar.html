@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Room Calendar Viewer</title>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #555;
+        }
+
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        select:hover, button:hover {
+            border-color: #0078d4;
+        }
+
+        button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #006bc7;
+        }
+
+        .view-mode-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            background: #0078d4;
+            color: white;
+        }
+
+        .navigation {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-button {
+            padding: 8px 16px;
+            min-width: 80px;
+        }
+
+        .current-date {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .multi-select-area {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .multi-select-area.active {
+            display: flex;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+
+        .calendar-container {
+            margin-top: 20px;
+        }
+
+        .multi-calendar-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .multi-calendar-grid.active {
+            display: grid;
+        }
+
+        .calendar-wrapper {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+        }
+
+        .calendar-wrapper h3 {
+            margin-bottom: 10px;
+            color: #0078d4;
+            font-size: 16px;
+        }
+
+        #single-calendar {
+            min-height: 600px;
+        }
+
+        .fc-event {
+            cursor: pointer;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Meeting Room Calendar Viewer</h1>
+        
+        <div class="controls">
+            <div class="view-mode-tabs">
+                <button class="tab-button active" onclick="switchMode('single')">Single Calendar</button>
+                <button class="tab-button" onclick="switchMode('multi')">Multiple Calendars</button>
+            </div>
+
+            <div class="control-group" id="single-select-area">
+                <label for="calendar-select">Select Meeting Room:</label>
+                <select id="calendar-select" onchange="loadSingleCalendar()">
+                    <option value="">Choose a room...</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="view-select-area">
+                <label for="view-type">View Type:</label>
+                <select id="view-type" onchange="changeView()">
+                    <option value="dayGridMonth">Month</option>
+                    <option value="timeGridWeek">Week</option>
+                    <option value="timeGridDay">Day</option>
+                </select>
+            </div>
+
+            <div class="navigation">
+                <button class="nav-button" onclick="navigatePrev()">← Previous</button>
+                <div class="current-date" id="current-date"></div>
+                <button class="nav-button" onclick="navigateNext()">Next →</button>
+                <button class="nav-button" onclick="navigateToday()">Today</button>
+            </div>
+        </div>
+
+        <div class="multi-select-area" id="multi-select-area">
+            <label>Select Multiple Meeting Rooms:</label>
+            <div class="checkbox-grid" id="checkbox-grid"></div>
+            <button onclick="loadMultipleCalendars()">Load Selected Calendars</button>
+        </div>
+
+        <div class="calendar-container">
+            <div id="loading" class="loading" style="display: none;">Loading calendars...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="single-calendar"></div>
+            <div id="multi-calendar-grid" class="multi-calendar-grid"></div>
+        </div>
+    </div>
+
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js'></script>
+    <script src="calendar-config.js"></script>
+    <script src="calendar-app.js"></script>
+</body>
+</html>
