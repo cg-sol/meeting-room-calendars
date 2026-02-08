@@ -7,12 +7,12 @@ const CALENDARS = [
     },
     {
         name: "Room 2",
-        url: "https://outlook.office365.com/calendar/published/024f54540dad4a1fb19faa38e4efb1b6@solect.com/abd538cb08c6422784f06b70ecf8f3f81892744134491062028/calendar.ics",
+        url: "https://outlook.office365.com/owa/calendar/024f54540dad4a1fb19faa38e4efb1b6@solect.com/abd538cb08c6422784f06b70ecf8f3f81892744134491062028/calendar.ics",
         color: "#107c10"
     },
     {
         name: "Room 3",
-        url: "https://outlook.office365.com/calendar/published/40350fe13e244f609ded65b4148ded8c@solect.com/53bd571d74f340dbaa0f761c8b665f7812053080795729831175/calendar.ics",
+        url: "https://outlook.office365.com/owa/calendar/40350fe13e244f609ded65b4148ded8c@solect.com/53bd571d74f340dbaa0f761c8b665f7812053080795729831175/calendar.ics",
         color: "#d83b01"
     },
     {
