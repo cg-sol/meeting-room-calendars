@@ -1,9 +1,10 @@
-// Main application logic for meeting room calendar viewer
+// Main application logic for meeting room calendar viewer - UPDATED VERSION
 
 let currentMode = 'single';
 let singleCalendar = null;
 let multiCalendars = {};
 let currentDate = new Date();
+let eventCache = {}; // Cache events to avoid refetching
 
 // Initialize the application
 function init() {
@@ -98,7 +99,7 @@ async function loadSingleCalendar() {
     hideError();
     
     try {
-        const events = await fetchCalendarEvents(calendar.url, calendar.color);
+        const events = await fetchCalendarEvents(calendar.url, calendar.color, selectIndex);
         
         // Destroy existing calendar if it exists
         if (singleCalendar) {
@@ -115,6 +116,11 @@ async function loadSingleCalendar() {
             headerToolbar: false,
             height: 'auto',
             events: events,
+            slotMinTime: '06:00:00',  // Show calendar from 6 AM
+            slotMaxTime: '22:00:00',  // Show calendar until 10 PM
+            allDaySlot: true,
+            nowIndicator: true,
+            scrollTime: '08:00:00',   // Scroll to 8 AM by default
             eventClick: function(info) {
                 alert('Event: ' + info.event.title + '\n' +
                       'Start: ' + info.event.start.toLocaleString() + '\n' +
@@ -123,13 +129,27 @@ async function loadSingleCalendar() {
             datesSet: function(dateInfo) {
                 currentDate = dateInfo.view.currentStart;
                 updateCurrentDateDisplay();
+            },
+            eventDidMount: function(info) {
+                // Ensure events are visible in day view
+                if (info.view.type === 'timeGridDay') {
+                    info.el.style.opacity = '1';
+                }
             }
         });
         
         singleCalendar.render();
+        
+        // Force a resize after render to fix display issues
+        setTimeout(() => {
+            if (singleCalendar) {
+                singleCalendar.updateSize();
+            }
+        }, 100);
+        
         showLoading(false);
     } catch (error) {
-        showError('Failed to load calendar: ' + error.message);
+        showError('Failed to load calendar: ' + error.message + ' - Please try again');
         showLoading(false);
     }
 }
@@ -142,6 +162,12 @@ async function loadMultipleCalendars() {
     if (selectedIndices.length === 0) {
         alert('Please select at least one calendar');
         return;
+    }
+    
+    if (selectedIndices.length > 4) {
+        if (!confirm('You selected ' + selectedIndices.length + ' calendars. For best viewing, we recommend 4 or fewer. Continue anyway?')) {
+            return;
+        }
     }
     
     showLoading(true);
@@ -157,7 +183,7 @@ async function loadMultipleCalendars() {
         
         for (const index of selectedIndices) {
             const calendar = CALENDARS[index];
-            const events = await fetchCalendarEvents(calendar.url, calendar.color);
+            const events = await fetchCalendarEvents(calendar.url, calendar.color, index);
             
             // Create wrapper div
             const wrapper = document.createElement('div');
@@ -180,6 +206,11 @@ async function loadMultipleCalendars() {
                 headerToolbar: false,
                 height: 'auto',
                 events: events,
+                slotMinTime: '06:00:00',
+                slotMaxTime: '22:00:00',
+                allDaySlot: true,
+                nowIndicator: true,
+                scrollTime: '08:00:00',
                 eventClick: function(info) {
                     alert('Event: ' + info.event.title + '\n' +
                           'Room: ' + calendar.name + '\n' +
@@ -192,31 +223,70 @@ async function loadMultipleCalendars() {
             multiCalendars[index] = cal;
         }
         
+        // Force resize after all calendars are rendered
+        setTimeout(() => {
+            Object.values(multiCalendars).forEach(cal => {
+                cal.updateSize();
+            });
+        }, 200);
+        
         showLoading(false);
         updateCurrentDateDisplay();
     } catch (error) {
-        showError('Failed to load calendars: ' + error.message);
+        showError('Failed to load calendars: ' + error.message + ' - Please try again');
         showLoading(false);
     }
 }
 
-// Fetch and parse calendar events from ICS URL
-async function fetchCalendarEvents(url, color) {
-    try {
-        // Use CORS proxy for fetching ICS files
-        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-        const response = await fetch(proxyUrl);
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch calendar data');
-        }
-        
-        const icsData = await response.text();
-        return parseICS(icsData, color);
-    } catch (error) {
-        console.error('Error fetching calendar:', error);
-        throw error;
+// Fetch and parse calendar events from ICS URL with retry logic
+async function fetchCalendarEvents(url, color, cacheKey) {
+    // Check cache first
+    if (eventCache[cacheKey]) {
+        console.log('Using cached events for calendar ' + cacheKey);
+        return eventCache[cacheKey];
     }
+    
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`Fetching calendar ${cacheKey}, attempt ${attempt}/${maxRetries}`);
+            
+            // Use CORS proxy for fetching ICS files
+            const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+            const response = await fetch(proxyUrl, {
+                signal: AbortSignal.timeout(15000) // 15 second timeout
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const icsData = await response.text();
+            
+            if (!icsData || icsData.trim().length === 0) {
+                throw new Error('Empty calendar data received');
+            }
+            
+            const events = parseICS(icsData, color);
+            
+            // Cache the events
+            eventCache[cacheKey] = events;
+            
+            return events;
+        } catch (error) {
+            lastError = error;
+            console.error(`Attempt ${attempt} failed:`, error);
+            
+            if (attempt < maxRetries) {
+                // Wait before retrying (exponential backoff)
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
+        }
+    }
+    
+    throw new Error(`Failed after ${maxRetries} attempts: ${lastError.message}`);
 }
 
 // Parse ICS data into FullCalendar events
@@ -238,7 +308,8 @@ function parseICS(icsData, color) {
                 backgroundColor: color,
                 borderColor: color,
                 description: event.description || '',
-                location: event.location || ''
+                location: event.location || '',
+                allDay: event.startDate.isDate // Properly handle all-day events
             };
             
             // Handle recurring events
@@ -246,7 +317,7 @@ function parseICS(icsData, color) {
                 const expand = event.iterator();
                 let next;
                 let count = 0;
-                const maxOccurrences = 100; // Limit recurring events
+                const maxOccurrences = 100;
                 
                 while ((next = expand.next()) && count < maxOccurrences) {
                     const occurrence = event.getOccurrenceDetails(next);
@@ -263,7 +334,7 @@ function parseICS(icsData, color) {
         });
     } catch (error) {
         console.error('Error parsing ICS data:', error);
-        throw new Error('Failed to parse calendar data');
+        throw new Error('Failed to parse calendar data - Invalid ICS format');
     }
     
     return events;
@@ -304,8 +375,22 @@ function changeView() {
     
     if (currentMode === 'single' && singleCalendar) {
         singleCalendar.changeView(viewType);
+        // Force resize after view change
+        setTimeout(() => {
+            if (singleCalendar) {
+                singleCalendar.updateSize();
+            }
+        }, 100);
     } else if (currentMode === 'multi') {
-        Object.values(multiCalendars).forEach(cal => cal.changeView(viewType));
+        Object.values(multiCalendars).forEach(cal => {
+            cal.changeView(viewType);
+        });
+        // Force resize after view change
+        setTimeout(() => {
+            Object.values(multiCalendars).forEach(cal => {
+                cal.updateSize();
+            });
+        }, 100);
     }
 }
 
@@ -344,5 +429,25 @@ function hideError() {
     document.getElementById('error').style.display = 'none';
 }
 
+// Clear event cache (useful if calendars are updated)
+function clearCache() {
+    eventCache = {};
+    console.log('Event cache cleared');
+}
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', init);
+
+// Handle window resize to update calendar sizes
+let resizeTimer;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+        if (singleCalendar) {
+            singleCalendar.updateSize();
+        }
+        Object.values(multiCalendars).forEach(cal => {
+            cal.updateSize();
+        });
+    }, 250);
+});
