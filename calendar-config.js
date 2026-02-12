@@ -1,10 +1,6 @@
 
 const CALENDARS = [
-    {
-        name: "Room 1",
-        url: "https://outlook.office365.com/owa/calendar/d1223f3c7c3d478ea3edf6435b0f48b5@solect.com/965d89338a714c34802d6a7b45bbff451948969580000036295/calendar.ics",
-        color: "#0078d4"
-    },
+
     {
         name: "Room 2",
         url: "https://outlook.office365.com/owa/calendar/024f54540dad4a1fb19faa38e4efb1b6@solect.com/abd538cb08c6422784f06b70ecf8f3f81892744134491062028/calendar.ics",
@@ -21,29 +17,9 @@ const CALENDARS = [
         color: "#8764b8"
     },
     {
-        name: "Room 5",
-        url: "https://outlook.office365.com/owa/calendar/c3d2b4d6e4694f289457aa6116e19e97@solect.com/6b5b8802c918407b8fa297e9c4ba6f0e13710579549671239421/calendar.ics",
-        color: "#ea4300"
-    },
-    {
-        name: "Room 6",
-        url: "https://outlook.office365.com/owa/calendar/40058506076e4dff88590237b7d43d08@solect.com/23ec2ccae425495bbc89c0ade970c19015629049610641851118/calendar.ics",
-        color: "#00188f"
-    },
-    {
         name: "Room 7",
         url: "https://outlook.office365.com/owa/calendar/06967910b25b42d086fa3cfab579bf0d@solect.com/6bd7026f7d934b948ca297271ec45e0b42598354811622694/calendar.ics",
         color: "#008272"
-    },
-    {
-        name: "Room 8",
-        url: "https://outlook.office365.com/owa/calendar/c246aba3812e499cbe558bc12192874f@solect.com/42e97c474977424cb46a40de29a7deb37524056800702478523/calendar.ics",
-        color: "#b146c2"
-    },
-    {
-        name: "Room 9",
-        url: "https://outlook.office365.com/owa/calendar/3b578b04440a4cc9ab889f7874354d92@solect.com/9f0b0b470dbd425485bdc51cea0d67c212540454517224445284/calendar.ics",
-        color: "#00b294"
     },
     {
         name: "Room 10",
@@ -61,19 +37,9 @@ const CALENDARS = [
         color: "#00cc6a"
     },
     {
-        name: "Room 13",
-        url: "https://outlook.office365.com/owa/calendar/07bb768de4164c89a2a12723375bb5ae@solect.com/73828cfa2d5c4c9ea9ca09c25fb8fa713963718418436143685/calendar.ics",
-        color: "#e3008c"
-    },
-    {
         name: "Room 14",
         url: "https://outlook.office365.com/owa/calendar/838ad430f0f74de88e986d596857af96@solect.com/26c44ca9e26d494a997c4a193404c2696862966689395256809/calendar.ics",
         color: "#ffaa44"
-    },
-    {
-        name: "Room 15",
-        url: "https://outlook.office365.com/owa/calendar/7dca4aebb36b408d8a65c327f40aedc0@solect.com/a28e98a6f52640ba817f12337452002f16940696439831094696/calendar.ics",
-        color: "#567c73"
     },
     {
         name: "Room 16",
